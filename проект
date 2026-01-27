@@ -2,9 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-// ==========================================
-// 1. МОДЕЛЬ ДАННЫХ (User Model)
-// ==========================================
 
 class User {
   final int id;
@@ -27,7 +24,7 @@ class User {
     required this.userStatus,
   });
 
-  // Преобразование объекта в JSON для отправки на сервер
+ 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -41,7 +38,7 @@ class User {
     };
   }
 
-  // Создание объекта из JSON
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] ?? 0,
@@ -56,14 +53,10 @@ class User {
   }
 }
 
-// ==========================================
-// 2. СЕРВИС API (Business Logic)
-// ==========================================
 
 class ApiService {
   static const String baseUrl = 'https://petstore.swagger.io/v2';
 
-  // Получение данных пользователя
   Future<User> getUser(String username) async {
     final response = await http.get(Uri.parse('$baseUrl/user/$username'));
 
@@ -76,7 +69,6 @@ class ApiService {
     }
   }
 
-  // Регистрация нового пользователя
   Future<bool> createUser(User user) async {
     final response = await http.post(
       Uri.parse('$baseUrl/user'),
@@ -85,18 +77,11 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
-
-  // Удаление пользователя
   Future<bool> deleteUser(String username) async {
     final response = await http.delete(Uri.parse('$baseUrl/user/$username'));
     return response.statusCode == 200;
   }
 }
-
-// ==========================================
-// 3. ГЛАВНОЕ ПРИЛОЖЕНИЕ И ЭКРАНЫ
-// ==========================================
-
 void main() => runApp(const PetStoreApp());
 
 class PetStoreApp extends StatelessWidget {
@@ -113,7 +98,6 @@ class PetStoreApp extends StatelessWidget {
   }
 }
 
-/// ЭКРАН 1: Главное меню
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
 
@@ -151,7 +135,6 @@ class MainMenuScreen extends StatelessWidget {
   }
 }
 
-/// ЭКРАН 2: Поиск и удаление
 class UserSearchScreen extends StatefulWidget {
   const UserSearchScreen({super.key});
 
@@ -174,7 +157,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       final user = await _api.getUser(_searchController.text);
       setState(() => _foundUser = user);
     } catch (e) {
-      // ignore: use_build_context_synchronously
+      
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => _isLoading = false);
@@ -185,7 +168,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     if (_foundUser == null) return;
     final success = await _api.deleteUser(_foundUser!.username);
     if (success) {
-      // ignore: use_build_context_synchronously
+    
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Удалено успешно')));
       setState(() => _foundUser = null);
     }
@@ -229,7 +212,6 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
   }
 }
 
-/// ЭКРАН 3: Форма создания пользователя
 class CreateUserScreen extends StatefulWidget {
   const CreateUserScreen({super.key});
 
@@ -305,7 +287,6 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 }
 
-/// Вспомогательный виджет кнопки меню
 class _MenuButton extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -336,4 +317,5 @@ class _MenuButton extends StatelessWidget {
     );
   }
 }
+
 
