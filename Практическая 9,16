@@ -1,24 +1,47 @@
 import 'package:flutter/material.dart';
 
-final List<String> users = ["Tom", "Bob", "Sam", "Mike"];
-final List<String> companies = ["Google", "Microsoft", "Apple", "JetBrains"];
-
 void main() {
   runApp(MaterialApp(
       home:  Scaffold(
-        body: ListView.separated(
-            padding: const EdgeInsets.all(8),
-            itemCount: users.length,
-            separatorBuilder: (BuildContext context, int index) => Divider(),
-            itemBuilder: (BuildContext context, int index) {
-              return ListTile(
-                  title: Text(users[index], style:TextStyle(fontSize: 22)),
-                  leading: Icon(Icons.face),
-                  trailing: Icon(Icons.phone),
-                  subtitle: Text("Works in ${companies[index]}")
-              );
-            }
-        ),
+        body: UsersList(),
         appBar: AppBar(title: Text("METANIT.COM")),)
   ));
+}
+
+class UsersList extends StatefulWidget {
+  const UsersList({super.key});
+
+  @override
+  
+  _UsersListState createState() => _UsersListState();
+}
+class _UsersListState extends State<UsersList> {
+  final List<String> _users = ["Tom", "Alice", "Sam", "Bob", "Kate"];
+  int _selectedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+              _selectedIndex==-1?"Не выбрано": "Выбрано: ${_users[_selectedIndex]}",
+              style: TextStyle(fontSize: 40)),
+          Expanded(child: ListView.builder(
+            itemCount: _users.length,
+            itemBuilder: (BuildContext context, int index) =>
+                ListTile(
+                  onTap: () {
+                    setState(() {
+                      
+                      _selectedIndex = index;
+                    });
+                  },
+                  title: Text(_users[index], style: TextStyle(fontSize: 34)),
+                  selected: index == _selectedIndex,
+                  selectedTileColor: Colors.black12,
+                ),
+          ))
+        ]);
+  }
 }
