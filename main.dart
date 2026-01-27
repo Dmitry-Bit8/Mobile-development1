@@ -1,0 +1,339 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+// ==========================================
+// 1. МОДЕЛЬ ДАННЫХ (User Model)
+// ==========================================
+
+class User {
+  final int id;
+  final String username;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String password;
+  final String phone;
+  final int userStatus;
+
+  User({
+    required this.id,
+    required this.username,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.password,
+    required this.phone,
+    required this.userStatus,
+  });
+
+  // Преобразование объекта в JSON для отправки на сервер
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'password': password,
+      'phone': phone,
+      'userStatus': userStatus,
+    };
+  }
+
+  // Создание объекта из JSON
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] ?? 0,
+      username: json['username'] ?? '',
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      email: json['email'] ?? '',
+      password: json['password'] ?? '',
+      phone: json['phone'] ?? '',
+      userStatus: json['userStatus'] ?? 0,
+    );
+  }
+}
+
+// ==========================================
+// 2. СЕРВИС API (Business Logic)
+// ==========================================
+
+class ApiService {
+  static const String baseUrl = 'https://petstore.swagger.io/v2';
+
+  // Получение данных пользователя
+  Future<User> getUser(String username) async {
+    final response = await http.get(Uri.parse('$baseUrl/user/$username'));
+
+    if (response.statusCode == 200) {
+      return User.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 404) {
+      throw Exception('Пользователь не найден');
+    } else {
+      throw Exception('Ошибка при загрузке: ${response.statusCode}');
+    }
+  }
+
+  // Регистрация нового пользователя
+  Future<bool> createUser(User user) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/user'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(user.toJson()),
+    );
+    return response.statusCode == 200;
+  }
+
+  // Удаление пользователя
+  Future<bool> deleteUser(String username) async {
+    final response = await http.delete(Uri.parse('$baseUrl/user/$username'));
+    return response.statusCode == 200;
+  }
+}
+
+// ==========================================
+// 3. ГЛАВНОЕ ПРИЛОЖЕНИЕ И ЭКРАНЫ
+// ==========================================
+
+void main() => runApp(const PetStoreApp());
+
+class PetStoreApp extends StatelessWidget {
+  const PetStoreApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'PetStore Manager',
+      theme: ThemeData(primarySwatch: Colors.indigo, useMaterial3: true),
+      home: const MainMenuScreen(),
+    );
+  }
+}
+
+/// ЭКРАН 1: Главное меню
+class MainMenuScreen extends StatelessWidget {
+  const MainMenuScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('PetStore API'), centerTitle: true),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _MenuButton(
+              title: 'Поиск и удаление',
+              icon: Icons.search,
+              color: Colors.blue,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UserSearchScreen()),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _MenuButton(
+              title: 'Создать пользователя',
+              icon: Icons.person_add,
+              color: Colors.green,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CreateUserScreen()),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ЭКРАН 2: Поиск и удаление
+class UserSearchScreen extends StatefulWidget {
+  const UserSearchScreen({super.key});
+
+  @override
+  State<UserSearchScreen> createState() => _UserSearchScreenState();
+}
+
+class _UserSearchScreenState extends State<UserSearchScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final ApiService _api = ApiService();
+  User? _foundUser;
+  bool _isLoading = false;
+
+  void _search() async {
+    setState(() {
+      _isLoading = true;
+      _foundUser = null;
+    });
+    try {
+      final user = await _api.getUser(_searchController.text);
+      setState(() => _foundUser = user);
+    } catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _delete() async {
+    if (_foundUser == null) return;
+    final success = await _api.deleteUser(_foundUser!.username);
+    if (success) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Удалено успешно')));
+      setState(() => _foundUser = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Поиск пользователя')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'Username',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.person),
+              ),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(onPressed: _search, child: const Text('Найти')),
+            const Divider(height: 40),
+            if (_isLoading) const CircularProgressIndicator(),
+            if (_foundUser != null)
+              Card(
+                child: ListTile(
+                  title: Text('${_foundUser!.firstName} ${_foundUser!.lastName}'),
+                  subtitle: Text('Email: ${_foundUser!.email}\nStatus: ${_foundUser!.userStatus}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: _delete,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ЭКРАН 3: Форма создания пользователя
+class CreateUserScreen extends StatefulWidget {
+  const CreateUserScreen({super.key});
+
+  @override
+  State<CreateUserScreen> createState() => _CreateUserScreenState();
+}
+
+class _CreateUserScreenState extends State<CreateUserScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _idController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final ApiService _api = ApiService();
+
+  void _submit() async {
+    if (_formKey.currentState!.validate()) {
+      final newUser = User(
+        id: int.parse(_idController.text),
+        username: _nameController.text,
+        firstName: 'Имя',
+        lastName: 'Фамилия',
+        email: _emailController.text,
+        password: 'pass',
+        phone: '123',
+        userStatus: 1,
+      );
+
+      final success = await _api.createUser(newUser);
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Создан успешно')));
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Регистрация')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            TextFormField(
+              controller: _idController,
+              decoration: const InputDecoration(labelText: 'ID (Число)'),
+              keyboardType: TextInputType.number,
+              validator: (v) => (v == null || v.isEmpty) ? 'Заполните ID' : null,
+            ),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Username'),
+              validator: (v) => (v == null || v.isEmpty) ? 'Заполните имя' : null,
+            ),
+            TextFormField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+              child: const Text('Отправить в API'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Вспомогательный виджет кнопки меню
+class _MenuButton extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MenuButton({required this.title, required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 40, color: color),
+            const SizedBox(height: 10),
+            Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
